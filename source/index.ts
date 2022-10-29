@@ -21,7 +21,7 @@ export default function killTheNewsletter(
 
   webApplication.set("url", "http://localhost:4000");
   webApplication.set("email", "smtp://localhost:2525");
-  webApplication.set("administrator", "mailto:kill-the-newsletter@leafac.com");
+  webApplication.set("administrator", "mailto:newsletter@leeapps.cn");
 
   fs.ensureDirSync(rootDirectory);
   const database = new Database(
