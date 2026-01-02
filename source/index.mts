@@ -461,7 +461,7 @@ application.layout = ({ request, response, head, body }) => {
         `}"
       >
         $${(() => {
-          const flash = request.getFlash();
+          const flash = request.getFlash?.();
           return typeof flash === "string"
             ? html`
                 <div
@@ -859,7 +859,7 @@ application.server?.push({
           }/feeds/${feed.publicId}.xml`,
         }),
       );
-    else response.redirect(`/feeds/${feed.publicId}`);
+    else response.redirect!(`/feeds/${feed.publicId}`);
   },
 });
 application.server?.push({
@@ -1154,8 +1154,8 @@ application.server?.push({
         where "id" = ${request.state.feed.id};
       `,
     );
-    response.setFlash(html`Feed settings updated successfully.`);
-    response.redirect();
+    response.setFlash!(html`Feed settings updated successfully.`);
+    response.redirect!();
   },
 });
 application.server?.push({
@@ -1205,8 +1205,8 @@ application.server?.push({
         `,
       );
     });
-    response.setFlash(html`Feed deleted successfully.`);
-    response.redirect("/");
+    response.setFlash!(html`Feed deleted successfully.`);
+    response.redirect!("/");
   },
 });
 application.server?.push({
