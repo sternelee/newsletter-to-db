@@ -20,19 +20,6 @@ import { SMTPServer, SMTPServerAddress } from "smtp-server";
 import * as mailParser from "mailparser";
 
 export type Application = {
-  types: {
-    states: {
-      Feed: {
-        feed: {
-          id: number;
-          publicId: string;
-          title: string;
-          icon: string | null;
-          emailIcon: string | null;
-        };
-      };
-    };
-  };
   version: string;
   commandLineArguments: {
     values: {
@@ -88,6 +75,19 @@ export type Application = {
     }) => HTML;
   };
   email: undefined | SMTPServer;
+  types: {
+    states: {
+      Feed: {
+        feed: {
+          id: number;
+          publicId: string;
+          title: string;
+          icon: string | null;
+          emailIcon: string | null;
+        };
+      };
+    };
+  };
 };
 const application = {} as Application;
 application.version = "2.0.8";
