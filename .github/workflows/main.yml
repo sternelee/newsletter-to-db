@@ -57,7 +57,6 @@ jobs:
             systemctl enable kill-the-newsletter
             rm -rf /mnt/kill-the-newsletter/kill-the-newsletter--deploy/
           EOF
-
   release:
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     needs: build
