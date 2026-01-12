@@ -2,7 +2,7 @@
 
 ## 2.0.9 · 2026-01-12
 
-- Enable compression on the server, which should reduce transfer costs.
+- Enable compression on the server, which should reduce data transfer costs.
 
 ## 2.0.8 · 2024-08-01
 
