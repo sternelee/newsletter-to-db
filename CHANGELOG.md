@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.9 · 2026-01-12
+
+- Enable compression on the server, which should reduce transfer costs.
+
 ## 2.0.8 · 2024-08-01
 
 - Changed the feed size limit from `2 ** 20` to `2 ** 19` to try and reduce server costs 💀
