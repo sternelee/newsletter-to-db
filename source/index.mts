@@ -74,7 +74,6 @@ export type Application = {
       }[];
     }) => HTML;
   };
-  email: undefined | SMTPServer;
   types: {
     states: {
       Feed: {
@@ -88,9 +87,10 @@ export type Application = {
       };
     };
   };
+  email: undefined | SMTPServer;
 };
 const application = {} as Application;
-application.version = "2.0.8";
+application.version = "2.0.9";
 application.commandLineArguments = util.parseArgs({
   options: {
     type: { type: "string" },
