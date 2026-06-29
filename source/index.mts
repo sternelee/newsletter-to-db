@@ -23,7 +23,7 @@ export type Application = {
   version: string;
   commandLineArguments: {
     values: {
-      type: undefined | "server" | "email" | "backgroundJob";
+      type: undefined | "server" | "email" | "backgroundJobWorker";
       port: undefined | string;
     };
     positionals: string[];
@@ -311,8 +311,8 @@ application.database = await new Database(
     create index "index_feedEntryEnclosureLinks_feedEntryEnclosure" on "feedEntryEnclosureLinks" ("feedEntryEnclosure");
   `,
 );
-if (application.commandLineArguments.values.type === "backgroundJob")
-  node.backgroundJob({ interval: 60 * 60 * 1000 }, async () => {
+if (application.commandLineArguments.values.type === "backgroundJobWorker")
+  node.setInterval({ duration: 60 * 60 * 1000 }, async () => {
     for (const feedEntryEnclosure of application.database.all<{
       id: number;
       publicId: string;
@@ -1417,13 +1417,13 @@ application.server?.push({
     response.send();
   },
 });
-if (application.commandLineArguments.values.type === "backgroundJob")
+if (application.commandLineArguments.values.type === "backgroundJobWorker")
   for (
     let backgroundJobIndex = 0;
     backgroundJobIndex < 32;
     backgroundJobIndex++
   )
-    application.database.backgroundJob(
+    application.database.backgroundJobWorker(
       { type: "feedWebSubSubscriptions.verify", timeout: 5 * 1000, retries: 0 },
       async (job: {
         feedId: number;
@@ -1829,9 +1829,9 @@ if (application.commandLineArguments.values.type === "email") {
       })
       .unref();
 }
-if (application.commandLineArguments.values.type === "backgroundJob")
+if (application.commandLineArguments.values.type === "backgroundJobWorker")
   for (let backgroundJobIndex = 0; backgroundJobIndex < 8; backgroundJobIndex++)
-    application.database.backgroundJob(
+    application.database.backgroundJobWorker(
       {
         type: "feedWebSubSubscriptions.dispatch",
         timeout: 5 * 1000,
@@ -1951,7 +1951,7 @@ if (application.commandLineArguments.values.type === undefined) {
           process.argv[1],
           ...application.commandLineArguments.positionals,
           "--type",
-          "backgroundJob",
+          "backgroundJobWorker",
           "--port",
           String(port),
         ],
