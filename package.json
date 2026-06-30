@@ -6,23 +6,31 @@
     "backup": "rsync -av --delete --progress root@kill-the-newsletter.com:/mnt/kill-the-newsletter/kill-the-newsletter/data/ /Volumes/leafac--hd/backups/kill-the-newsletter/"
   },
   "dependencies": {
-    "@radically-straightforward/production": "^1.0.63",
+    "@radically-straightforward/production": "^1.0.68",
     "crypto-random-string": "^5.0.0",
-    "mailparser": "^3.9.3",
-    "smtp-server": "^3.18.1"
+    "mailparser": "^3.9.12",
+    "smtp-server": "^3.19.1"
   },
   "devDependencies": {
     "@fontsource-variable/roboto-flex": "^5.2.8",
-    "@radically-straightforward/development": "^1.0.77",
+    "@radically-straightforward/development": "^1.0.82",
     "@types/mailparser": "^3.4.6",
-    "@types/node": "^25.2.3",
-    "@types/nodemailer": "^7.0.9",
-    "@types/smtp-server": "^3.5.12",
+    "@types/node": "^26.0.1",
+    "@types/nodemailer": "^8.0.1",
+    "@types/smtp-server": "^3.5.13",
     "bootstrap-icons": "^1.13.1",
-    "nodemailer": "^8.0.1",
-    "nodemon": "^3.1.11",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
+    "nodemailer": "^9.0.3",
+    "nodemon": "^3.1.14",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "@radically-straightforward/typescript@1.0.5": true,
+    "esbuild@0.28.1": true,
+    "xxhash-addon@2.1.0": true,
+    "@radically-straightforward/caddy@2.0.12": true,
+    "better-sqlite3@12.11.1": true
   },
   "prettier": {}
 }
