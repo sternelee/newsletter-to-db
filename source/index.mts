@@ -106,7 +106,12 @@ await fs.mkdir(application.configuration.dataDirectory, { recursive: true });
 application.configuration.environment ??= "production";
 application.privateConfiguration = {} as Application["privateConfiguration"];
 application.privateConfiguration.ports = Array.from(
-  { length: os.availableParallelism() },
+  {
+    length:
+      application.configuration.environment === "development"
+        ? 1
+        : os.availableParallelism(),
+  },
   (value, index) => 18000 + index,
 );
 if (application.commandLineArguments.values.type === "server")
@@ -559,23 +564,29 @@ application.partials.feed = ({ feed, feedEntries }) =>
       <id>urn:kill-the-newsletter:${feed.publicId}</id>
       <link
         rel="self"
-        href="https://${application.configuration
-          .hostname}/feeds/${feed.publicId}.xml"
+        href="https://${
+          application.configuration.hostname
+        }/feeds/${feed.publicId}.xml"
       />
       <link
         rel="hub"
-        href="https://${application.configuration
-          .hostname}/feeds/${feed.publicId}/websub"
+        href="https://${
+          application.configuration.hostname
+        }/feeds/${feed.publicId}/websub"
       />
-      $${typeof feed.icon === "string" || typeof feed.emailIcon === "string"
-        ? html`<icon
-            >${feed.icon ??
-            feed.emailIcon ??
-            (() => {
-              throw new Error();
-            })()}</icon
-          >`
-        : html``}
+      $${
+        typeof feed.icon === "string" || typeof feed.emailIcon === "string"
+          ? html`<icon
+              >${
+              feed.icon ??
+              feed.emailIcon ??
+              (() => {
+                throw new Error();
+              })()
+            }</icon
+            >`
+          : html``
+      }
       <updated
         >${feedEntries[0]?.createdAt ?? "2000-01-01T00:00:00.000Z"}</updated
       >
@@ -587,8 +598,9 @@ application.partials.feed = ({ feed, feedEntries }) =>
             <link
               rel="alternate"
               type="text/html"
-              href="https://${application.configuration
-                .hostname}/feeds/${feed.publicId}/entries/${feedEntry.publicId}.html"
+              href="https://${
+                application.configuration.hostname
+              }/feeds/${feed.publicId}/entries/${feedEntry.publicId}.html"
             />
             $${application.database
               .all<{
@@ -615,8 +627,9 @@ application.partials.feed = ({ feed, feedEntries }) =>
                     rel="enclosure"
                     type="${feedEntryEnclosure.type}"
                     length="${String(feedEntryEnclosure.length)}"
-                    href="https://${application.configuration
-                      .hostname}/files/${feedEntryEnclosure.publicId}/${feedEntryEnclosure.name}"
+                    href="https://${
+                      application.configuration.hostname
+                    }/files/${feedEntryEnclosure.publicId}/${feedEntryEnclosure.name}"
                   />
                 `,
               )}
@@ -636,8 +649,9 @@ application.partials.feed = ({ feed, feedEntries }) =>
                 <p>
                   <small>
                     <a
-                      href="https://${application.configuration
-                        .hostname}/feeds/${feed.publicId}"
+                      href="https://${
+                        application.configuration.hostname
+                      }/feeds/${feed.publicId}"
                       >Kill the Newsletter! feed settings</a
                     >
                   </small>
@@ -927,8 +941,9 @@ application.server?.push({
             >
               <input
                 type="text"
-                value="${request.state.feed.publicId}@${application
-                  .configuration.hostname}"
+                value="${request.state.feed.publicId}@${
+                  application.configuration.hostname
+                }"
                 readonly
                 css="${css`
                   flex: 1;
@@ -971,8 +986,9 @@ application.server?.push({
             >
               <input
                 type="text"
-                value="https://${application.configuration
-                  .hostname}/feeds/${request.state.feed.publicId}.xml"
+                value="https://${
+                  application.configuration.hostname
+                }/feeds/${request.state.feed.publicId}.xml"
                 readonly
                 css="${css`
                   flex: 1;
