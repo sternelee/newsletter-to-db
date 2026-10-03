@@ -5,6 +5,7 @@ import url from "node:url";
 import fs from "node:fs/promises";
 import fsCallback from "node:fs";
 import crypto from "node:crypto";
+import stream from "node:stream";
 import server from "@radically-straightforward/server";
 import * as serverTypes from "@radically-straightforward/server";
 import sql, { Database } from "@radically-straightforward/sqlite";
@@ -16,7 +17,8 @@ import * as node from "@radically-straightforward/node";
 import * as caddy from "@radically-straightforward/caddy";
 import cryptoRandomString from "crypto-random-string";
 import smtpServer from "smtp-server";
-import * as mailParser from "mailparser";
+import PostalMime from "postal-mime";
+import { DOMParser } from "linkedom";
 
 export type Application = {
   version: string;
@@ -90,7 +92,7 @@ export type Application = {
 };
 
 const application = {} as Application;
-application.version = "2.1.2";
+application.version = "2.1.3";
 application.commandLineArguments = util.parseArgs({
   options: {
     type: { type: "string" },
@@ -653,7 +655,7 @@ application.webServer?.push({
               insert into "feeds" ("publicId", "title")
               values (
                 ${cryptoRandomString({
-                  length: 20,
+                  length: 40,
                   characters: "abcdefghijklmnopqrstuvwxyz0123456789",
                 })},
                 ${request.body.title}
@@ -1357,13 +1359,13 @@ application.webServer?.push({
 });
 
 if (application.commandLineArguments.values.type === "emailServer") {
-  type SMTPServerSessionState = {
-    state: {
-      feeds: {
+  type SMTPServerSessionStates = {
+    states: {
+      feed: {
         id: number;
         publicId: string;
-      }[];
-    };
+      };
+    }[];
   };
   application.emailServer = new smtpServer.SMTPServer({
     name: application.userConfiguration.hostname,
@@ -1377,9 +1379,9 @@ if (application.commandLineArguments.values.type === "emailServer") {
     onMailFrom: util.callbackify(
       async (
         address: smtpServer.SMTPServerAddress,
-        session: smtpServer.SMTPServerSession & SMTPServerSessionState,
+        session: smtpServer.SMTPServerSession & SMTPServerSessionStates,
       ) => {
-        session.state = { feeds: [] };
+        session.states = [];
         if (
           address.address.match(utilities.emailRegExp) === null ||
           ["blogtrottr.com", "feedrabbit.com"].some((hostname) =>
@@ -1392,7 +1394,7 @@ if (application.commandLineArguments.values.type === "emailServer") {
     onRcptTo: util.callbackify(
       async (
         address: smtpServer.SMTPServerAddress,
-        session: smtpServer.SMTPServerSession & SMTPServerSessionState,
+        session: smtpServer.SMTPServerSession & SMTPServerSessionStates,
       ) => {
         if (
           address.address.match(utilities.emailRegExp) === null &&
@@ -1414,20 +1416,42 @@ if (application.commandLineArguments.values.type === "emailServer") {
           `,
         );
         if (feed === undefined) throw new Error();
-        session.state.feeds.push(feed);
+        session.states.push({ feed });
       },
     ),
     onData: util.callbackify(
       async (
         emailStream: smtpServer.SMTPServerDataStream,
-        session: smtpServer.SMTPServerSession & SMTPServerSessionState,
+        session: smtpServer.SMTPServerSession & SMTPServerSessionStates,
       ) => {
         try {
           if (session.envelope.mailFrom === false) throw new Error();
-          const email = await mailParser.simpleParser(emailStream);
+          const email = await PostalMime.parse(
+            stream.Readable.toWeb(emailStream) as ReadableStream,
+          );
           if (emailStream.sizeExceeded) throw new Error();
+          const emailBody =
+            typeof email.html === "string"
+              ? email.html
+              : html`<pre>${email.text ?? ""}</pre>`;
+          const emailBodyDOM = new DOMParser()
+            .parseFromString(
+              emailBody.trim().startsWith(`<!doctype`)
+                ? emailBody
+                : html`
+                    <!doctype html>
+                    <html>
+                      <body>
+                        $${emailBody}
+                      </body>
+                    </html>
+                  `,
+              "text/html",
+            )
+            .querySelector("html");
           const feedEntryEnclosures = new Array<{ id: number }>();
           for (const attachment of email.attachments) {
+            const content = Buffer.from(attachment.content as ArrayBuffer);
             const feedEntryEnclosure = application.database.get<{
               id: number;
               publicId: string;
@@ -1445,11 +1469,11 @@ if (application.commandLineArguments.values.type === "emailServer") {
                       )
                       values (
                         ${cryptoRandomString({
-                          length: 20,
+                          length: 40,
                           characters: "abcdefghijklmnopqrstuvwxyz0123456789",
                         })},
-                        ${attachment.contentType},
-                        ${attachment.size},
+                        ${attachment.mimeType},
+                        ${content.length},
                         ${
                           attachment.filename?.replaceAll(
                             /[^A-Za-z0-9_.-]/g,
@@ -1477,17 +1501,32 @@ if (application.commandLineArguments.values.type === "emailServer") {
                 feedEntryEnclosure.publicId,
                 feedEntryEnclosure.name,
               ),
-              attachment.content,
+              content,
             );
             feedEntryEnclosures.push(feedEntryEnclosure);
+            if (typeof attachment.contentId === "string")
+              for (const element of emailBodyDOM.querySelectorAll(
+                'img[src^="cid:"]',
+              ))
+                if (
+                  attachment.contentId.replaceAll(/^<|>$/g, "") ===
+                  element
+                    .getAttribute("src")!
+                    .replace(/^cid:/, "")
+                    .replaceAll(/^<|>$/g, "")
+                )
+                  element.setAttribute(
+                    "src",
+                    `/files/${feedEntryEnclosure.publicId}/${feedEntryEnclosure.name}`,
+                  );
           }
-          for (const feed of session.state.feeds)
+          for (const state of session.states)
             application.database.transaction(() => {
               application.database.run(
                 sql`
                   update "feeds"
                   set "emailIcon" = ${`https://${(session.envelope.mailFrom as smtpServer.SMTPServerAddress).address.split("@")[1]}/favicon.ico`}
-                  where "id" = ${feed.id};
+                  where "id" = ${state.feed.id};
                 `,
               );
               const feedEntry = application.database.get<{
@@ -1508,14 +1547,17 @@ if (application.commandLineArguments.values.type === "emailServer") {
                         )
                         values (
                           ${cryptoRandomString({
-                            length: 20,
+                            length: 40,
                             characters: "abcdefghijklmnopqrstuvwxyz0123456789",
                           })},
-                          ${feed.id},
+                          ${state.feed.id},
                           ${new Date().toISOString()},
                           ${(session.envelope.mailFrom as smtpServer.SMTPServerAddress).address},
                           ${email.subject ?? "Untitled"},
-                          ${typeof email.html === "string" ? email.html : typeof email.textAsHtml === "string" ? email.textAsHtml : "No content."}
+                          ${html`
+                            <!doctype html>
+                            $${emailBodyDOM.outerHTML}
+                          `}
                         );
                       `,
                     ).lastInsertRowid
@@ -1543,7 +1585,7 @@ if (application.commandLineArguments.values.type === "emailServer") {
                 sql`
                   select "id", "publicId", "title", "content"
                   from "feedEntries"
-                  where "feed" = ${feed.id}
+                  where "feed" = ${state.feed.id}
                   order by "id" asc;
                 `,
               );
@@ -1569,13 +1611,13 @@ if (application.commandLineArguments.values.type === "emailServer") {
                 id: number;
               }>(
                 sql`
-                  select "id" from "feedWebSubSubscriptions" where "feed" = ${feed.id};
+                  select "id" from "feedWebSubSubscriptions" where "feed" = ${state.feed.id};
                 `,
               ))
                 application.database.backgroundJob({
                   type: "feedWebSubSubscriptions.dispatch",
                   parameters: {
-                    feedId: feed.id,
+                    feedId: state.feed.id,
                     feedEntryId: feedEntry.id,
                     feedWebSubSubscriptionId: feedWebSubSubscription.id,
                   },
@@ -1584,7 +1626,7 @@ if (application.commandLineArguments.values.type === "emailServer") {
                 "EMAIL",
                 "SUCCESS",
                 "FEED",
-                String(feed.publicId),
+                String(state.feed.publicId),
                 "ENTRY",
                 feedEntry.publicId,
                 (session.envelope.mailFrom as smtpServer.SMTPServerAddress)
